@@ -155,13 +155,10 @@ def combine_with_booknlp(booknlp_data_folder, judgement_id, blackstone_data):
     #booknlp_df[["sentence_ID", "blackstone_sentence_ID"]].to_csv("C:/Users/flawrence/Documents/Projects/FCL/Research Area/blackstone/data/sentence_compare.csv")
 
 
-
-
-
 if __name__ == '__main__':
 
     input_folder = "C:/Users/flawrence/Documents/Projects/FCL/Research Area/ds-caselaw-data-analysis/data/extracted_text/test"
     booknlp_data_folder = "C:/Users/flawrence/Documents/Projects/FCL/Research Area/booknlp/data"
-    output_dir = "C:/Users/flawrence/Documents/Projects/FCL/Research Area/blackstone/data"
+    output_dir = "C:/Users/flawrence/Documents/Projects/FCL/Research Area/ds-caselaw-blackstone-analysis/data"
 
     segment_judgment(input_folder, output_dir, booknlp_data_folder)
