@@ -17,7 +17,7 @@
         <xsl:apply-templates />
     </xsl:template>    
     
-    <xsl:template match="akn:span/akn:ref">
+    <xsl:template match="akn:ref">
         <xsl:value-of select="normalize-space(.)"/><xsl:text>|@|</xsl:text><xsl:value-of select="./@uk:type"/><xsl:text>|@|</xsl:text><xsl:value-of select="./@href"/><xsl:text>|@|</xsl:text><xsl:value-of select="./@uk:isNeutral"/><xsl:text>|@|</xsl:text><xsl:value-of select="./@uk:canonical"/><xsl:text>|@|</xsl:text><xsl:value-of select="./@uk:year"/><xsl:text>|@|</xsl:text><xsl:value-of select="./@uk:origin"/>
         <xsl:text>|@|</xsl:text><xsl:value-of select="(ancestor::*/@eId)[1]"/>
         <xsl:text>|@|</xsl:text><xsl:value-of select="(ancestor::*/akn:num)[1]"/>

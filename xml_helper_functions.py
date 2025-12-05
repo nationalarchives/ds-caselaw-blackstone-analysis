@@ -60,9 +60,20 @@ def parse_file(folder, filename, transformation_filename):
     return(extracted_values)
 
 
-def get_data_from_transform(xml_folder, transformation_file):
+def get_data_from_transform(xml_folder, transformation_file, filter=[]):
+    ''' Function runs the specified XSLT transformation on all the XML files in the specified folder.
+    '''
 
     files_for_parsing = get_filenames(xml_folder)
+
+    #print(files_for_parsing)
+
+    if len(filter) > 0:
+        #need to deal with files with optional hyphens in front because want -eat-2022-2 and eat-2022-2 to match
+        files_for_parsing = [file_tuple for file_tuple in files_for_parsing if file_tuple[1] in filter]
+
+        if len(files_for_parsing) < 1:
+            print("No files found that match specified filters (" + str(filter) + ")")
 
     #print(files_for_parsing)
 
@@ -72,18 +83,32 @@ def get_data_from_transform(xml_folder, transformation_file):
 
         values = parse_file(Path(path), xml_file, transformation_file)
 
+        #print(values)
+
         temp_df = pd.read_table(io.StringIO(str(values)), delimiter="\|\@\|", quoting=csv.QUOTE_NONE, engine="python")
         temp_df['file'] = xml_file
+
+        base_filename = Path(xml_file).stem            
+        if base_filename[0] == "-":
+            base_filename = base_filename[1:]
+        temp_df['filename'] = base_filename
+
         temp_df['folder'] = path
 
         temp_list.append(temp_df)
+        #print(temp_df)
+
+    #print(len(temp_list))
 
     if len(temp_list) > 1:
-        return pd.concat(temp_list, axis=0, ignore_index=True)
+        combined_df = pd.concat(temp_list, axis=0, ignore_index=True)
+        #print(combined_df)
+        return combined_df
     elif len(temp_list) == 1:
         return temp_list[0]
     else:
         return pd.DataFrame()
 
 
-
+if __name__ == '__main__':
+    print("Running helper functions file")

@@ -1,7 +1,6 @@
 import xml_helper_functions as xf
 from pathlib import Path
 import pandas as pd
-import csv, io
 
 # get xml files in folder
 # for each file
@@ -17,8 +16,10 @@ cache_folder = Path(base_folder,"cache")
 
 
 judgment_data = xf.get_data_from_transform(xml_folder, transformation_file)
+print(judgment_data)
 
 judgment_data.to_csv(Path(cache_folder, "extracted_text.csv"), index=False)
+print("Saving csv to " + str(Path(cache_folder, "extracted_text.csv")))
 
 
 
