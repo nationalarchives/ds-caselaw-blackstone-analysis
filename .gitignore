@@ -182,3 +182,4 @@ cython_debug/
 *.xlsx
 *.tokens
 *.tsv
+test.py
