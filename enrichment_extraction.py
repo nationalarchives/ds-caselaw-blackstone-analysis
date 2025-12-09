@@ -24,4 +24,4 @@ if not(judgment_data.empty):
     for id, group in judgment_data.groupby(['filename']):
         #print(id)
         group.to_csv(Path(cache_folder, id + "_enrichmented_refs.csv"), index=False)
-        print("Saving csv to " + str(Path(cache_folder, id + "_" + model + "_enrichmented_refs.csv")))
+        print("Saving csv to " + str(Path(cache_folder, id + "_enrichmented_refs.csv")))

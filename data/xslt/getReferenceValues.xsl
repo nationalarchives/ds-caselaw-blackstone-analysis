@@ -12,7 +12,7 @@
     
     
     <xsl:template match="/">
-        <xsl:text>text|@|type|@|href|@|isNeutral|@|canonical|@|year|@|origin|@|eID|@|num|@|path|@|context
+        <xsl:text>text|@|type|@|href|@|isNeutral|@|canonical|@|year|@|origin|@|eID|@|num|@|path|@|context|@|text before|@|text after
 </xsl:text>        
         <xsl:apply-templates />
     </xsl:template>    
@@ -23,6 +23,8 @@
         <xsl:text>|@|</xsl:text><xsl:value-of select="(ancestor::*/akn:num)[1]"/>
         <xsl:text>|@|</xsl:text><xsl:for-each select="./ancestor-or-self::node()"><xsl:value-of select="name(.)"/><xsl:if test="not(position() = last())">/</xsl:if></xsl:for-each>
         <xsl:text>|@|</xsl:text><xsl:apply-templates select="ancestor::akn:p[1]" mode="child"/>
+        <xsl:text>|@|</xsl:text><xsl:apply-templates select="parent::node()/preceding-sibling::node()" mode="child"/><xsl:apply-templates select="preceding-sibling::node()" mode="child"/>
+        <xsl:text>|@|</xsl:text><xsl:apply-templates select="following-sibling::node()" mode="child"/><xsl:apply-templates select="parent::node()/following-sibling::node()" mode="child"/>
         <xsl:text>
 </xsl:text>
     </xsl:template>
