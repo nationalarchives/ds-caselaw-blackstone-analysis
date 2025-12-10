@@ -9,66 +9,79 @@ from lxml import etree as etree
 
 # Verify if the extracted links are valid links
 
-def compare_values(values, type="leg"):
+def compare_values(values, folders, type="leg"):
     #print("Legislation Comparison:")
     #leg_values = leg_values.dropna(how='all', axis=1)
     #print(leg_values.info())
 
     #print(values)
 
-    leg_enrichment_comparison = pd.DataFrame(index=values.index)
-
-
     columns = values.columns.values.tolist()
     comparision_dict = {}
+    no_compare = ['type', 'file', 'filename', 'parent_folder', 'folder', 'position']
     for column in columns:
-        if column not in ['type', 'file', 'filename']:
+        if column not in no_compare:
             comparision_dict[column + "_comparison"] = []
 
     link_results = []
+    enrichment_source = []
 
     for i, row in values.iterrows():
 
         #value comparison
+        if len(folders) == len(row['parent_folder']):
+            enrichment_source.append(["All"])
+        else:
+            enrichment_source.append(list(row['parent_folder']))
+
         for column in columns:
-            if column not in ['type', 'file', 'filename']:
+            if column not in no_compare:
                 comparision_dict[column + "_comparison"].append(match_check(row, column))
                 #print(column + "_comparison: " + str(len(comparision_dict[column + "_comparison"])))
 
         #link check
         if len(row['href']) == 1:
             link = list(row['href'])[0]
+            #print("href: " + link)
             if link and link != "" and link != '#':
                 link_doc = check_url(link, type=type)
                 if link_doc:
                     link_results.append({link_doc})
                 else:
-                    link_results.append({"Bad URI"})
+                    link_results.append({"Bad URI: " + link})
             else:
-                link_results.append({"No valid URI"})
+                link_results.append({"No valid URI given: " + link})
+                #print("Warning!: href is '" + link + "'")
         else:
             print("Warning!: Link difference")
             link_set = ()
             for link in row['href']:
+                #print("href: " + link)
                 if link and link != "" and link != '#':
                     link_doc = check_url(link, type=type)
                     if link_doc:
                         link_set.add(link_doc)
                     else:
-                        link_set.add("Bad URI")
+                        link_set.add("Bad URI: " + link)
 
             link_results.append(link_set)
 
     #print(comparision_dict)
+    
     leg_enrichment_comparison = df.from_dict(comparision_dict)
     leg_enrichment_comparison['link check'] = link_results  
+    leg_enrichment_comparison['source'] = enrichment_source 
+    leg_enrichment_comparison['position'] = values['position']
+    
 
     #print(values)
     return leg_enrichment_comparison
 
-
 def match_check(row, colname):
-    if len(row[colname]) > 1:
+
+    if colname == 'parent_folder':
+        return row[colname]
+    elif len(row[colname]) > 1:      
         return False
     else:
         return True
@@ -78,7 +91,6 @@ def check_url(uri, type="leg"):
     response = requests.get(url)
 
     if response.ok:
-
         try: 
             tree = etree.ElementTree(etree.fromstring(response.content))
             root = tree.getroot()
@@ -86,9 +98,10 @@ def check_url(uri, type="leg"):
                 title = root.find(".//dc:title", namespaces={"dc": "http://purl.org/dc/elements/1.1/"})
                 return(title.text)
             else:
-                print("Root: " + str(root))
+                #print("Root: " + str(root) + " in " + url)
                 citation = root.find(".//uk:cite", namespaces={"uk": "https://caselaw.nationalarchives.gov.uk/akn"})
                 if citation is not None:
+                    #print("Citation found in " + url)
                     return(citation.text)
                 else:
                     print("Could not find citation element in " + url)
@@ -100,23 +113,19 @@ def check_url(uri, type="leg"):
             print("No value found at " + url + ": " + str(ae))
 
     else:
-        #print("Warning!: Bad URI: " + uri)
+        print("Warning!: Bad URI: " + uri)
         return(None)
-
-
-
-
-def compare_case_values(case_values):
-    #print(judgment_values)
-    pass
-
-
 
 def get_parent_folder(row):
     return Path(row['folder']).name
 
 def get_position(row):
     return len(row['text before'])
+
+def output_report(output_path):
+    with open("demofile.txt", "w") as report:
+        report.write()
+
 
 if __name__ == '__main__':
 
@@ -132,6 +141,8 @@ if __name__ == '__main__':
             df['parent_folder'] = df.apply(get_parent_folder, axis=1)
             df['position'] = df.apply(get_position, axis=1)
 
+            folders = set(df['parent_folder'].unique())
+
             #print(df[['position', 'text before', 'text after']])
 
             values = df.groupby(['parent_folder', 'filename', 'type']).size().reset_index(name='counts').sort_values(['type'])
@@ -146,10 +157,12 @@ if __name__ == '__main__':
                 print("Warning!: Unexpected type in values " + str(type_error_values))
 
             print(df['filename'].unique()[0])
-            #leg_comparison = compare_values(leg_values.groupby('position').agg(set).sort_index())
-            #print(leg_comparison)
+            leg_comparison = compare_values(leg_values.groupby('position', as_index=False).agg(set).sort_index(), folders=folders)
+            if not(leg_comparison.empty):
+                print(leg_comparison)
 
 
-            case_comparison = compare_values(case_values.groupby('position').agg(set).sort_index(), type="case")
-            print(case_comparison)
+            case_comparison = compare_values(case_values.groupby('position', as_index=False).agg(set).sort_index(), folders=folders, type="case")
+            if not(case_comparison.empty):
+                print(case_comparison)
             
