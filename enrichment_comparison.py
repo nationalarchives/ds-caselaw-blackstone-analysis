@@ -43,26 +43,28 @@ def compare_values(values, folders, type="leg"):
         if len(row['href']) == 1:
             link = list(row['href'])[0]
             #print("href: " + link)
-            if link and link != "" and link != '#':
+            if check_link_url(link):
                 link_doc = check_url(link, type=type)
                 if link_doc:
                     link_results.append({link_doc})
                 else:
                     link_results.append({"Bad URI: " + link})
             else:
-                link_results.append({"No valid URI given: " + link})
+                link_results.append({"Not checked: " + link})
                 #print("Warning!: href is '" + link + "'")
         else:
             print("Warning!: Link difference")
             link_set = ()
             for link in row['href']:
                 #print("href: " + link)
-                if link and link != "" and link != '#':
+                if check_link_url(link):
                     link_doc = check_url(link, type=type)
                     if link_doc:
                         link_set.add(link_doc)
                     else:
                         link_set.add("Bad URI: " + link)
+                else:
+                    link_set.add("Not checked: " + link)
 
             link_results.append(link_set)
 
@@ -85,6 +87,13 @@ def match_check(row, colname):
         return False
     else:
         return True
+
+def check_link_url(link):
+    if link and ("www.legislation.gov.uk" in link or "caselaw.nationalarchives.gov.uk" in link) :
+        return True
+    else:
+        return False
+
 
 def check_url(uri, type="leg"):
     url = uri + '/data.xml'
@@ -113,7 +122,10 @@ def check_url(uri, type="leg"):
             print("No value found at " + url + ": " + str(ae))
 
     else:
-        print("Warning!: Bad URI: " + uri)
+        if type == "leg":
+            print("Warning!: Bad URI: " + uri)
+        else:
+            print("Warning!: No XML file: " + uri)
         return(None)
 
 def get_parent_folder(row):
