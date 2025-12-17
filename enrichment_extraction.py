@@ -10,7 +10,7 @@ import pandas as pd
 base_folder = "C:/Users/flawrence/Documents/Projects/FCL/Research Area/ds-caselaw-blackstone-analysis/"
 data_base_folder = "C:/Users/flawrence/Documents/Projects/FCL/Research Area/ds-caselaw-data-analysis/"
 
-xml_folder = [Path(data_base_folder, "data/xml-enriched-bucket-test/"), Path(data_base_folder, "data/xml-third-phase-enriched-bucket-test/")]
+xml_folder = [Path(data_base_folder, "data/xml-enriched-bucket-test/"), Path(data_base_folder, "data/xml-second-phase-enriched-bucket-test/"), Path(data_base_folder, "data/xml-third-phase-enriched-bucket-test/")]
 transformation_file = Path(base_folder, "data/xslt/getReferenceValues.xsl")
 cache_folder = Path(base_folder,"cache")
 

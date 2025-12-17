@@ -18,7 +18,7 @@ def compare_values(values, folders, type="leg"):
 
     columns = values.columns.values.tolist()
     comparision_dict = {}
-    no_compare = ['type', 'file', 'filename', 'parent_folder', 'folder', 'position']
+    no_compare = ['type', 'file', 'filename', 'parent_folder', 'folder', 'position', 'eID']
     for column in columns:
         if column not in no_compare:
             comparision_dict[column + "_comparison"] = []
@@ -46,9 +46,10 @@ def compare_values(values, folders, type="leg"):
             if check_link_url(link):
                 link_doc = check_url(link, type=type)
                 if link_doc:
+                    #print(link_doc)
                     link_results.append({link_doc})
                 else:
-                    link_results.append({"Bad URI: " + link})
+                    link_results.append({"Error: " + link})
             else:
                 link_results.append({"Not checked: " + link})
                 #print("Warning!: href is '" + link + "'")
@@ -74,6 +75,7 @@ def compare_values(values, folders, type="leg"):
     leg_enrichment_comparison['link check'] = link_results  
     leg_enrichment_comparison['source'] = enrichment_source 
     leg_enrichment_comparison['position'] = values['position']
+    leg_enrichment_comparison['eID'] = values['eID']
     
 
     #print(values)
@@ -118,15 +120,19 @@ def check_url(uri, type="leg"):
 
         except etree.ParseError as pe:
             print("Could not parse " + url + ": " + str(pe))
+            return(None)
         except AttributeError as ae:
             print("No value found at " + url + ": " + str(ae))
+            return(None)
 
     else:
         if type == "leg":
             print("Warning!: Bad URI: " + uri)
         else:
             print("Warning!: No XML file: " + uri)
-        return(None)
+        
+        return("Bad URI: " + uri)
+
 
 def get_parent_folder(row):
     return Path(row['folder']).name
@@ -135,13 +141,48 @@ def get_position(row):
     return len(row['text before'])
 
 def output_report(output_path):
+
+    report_text = []
+
+    #number of unique files
+    number_of_files = 0
+    number_of_files_text = "Number of Files processed:" + str(number_of_files)
+    report_text.append(number_of_files_text)
+
+    #number of sources of enrichment
+    number_of_sources = 0
+    number_of_sources_text = "Number of sources processed:" 
+    report_text.append(number_of_sources_text)
+
+    #number of files / source
+    files_sources_breakdown = ""
+    report_text.append(files_sources_breakdown)
+
+    #table with column with filename, columns with number of cases for each source
+    #table with column with filename, columns with number of legislation for each source
+
+
+    # Documents (order by number of references)
+    # Split into matched values
+
+    # Extranious values
+
+    # Position
+    #   Table with column for Source , columns for values...
+
+
+
+    
+
     with open("demofile.txt", "w") as report:
-        report.write()
+        report.writelines(report_text)
+
 
 
 if __name__ == '__main__':
 
-    csv_folder = [Path("C:/Users/flawrence/Documents/Projects/FCL/Research Area/ds-caselaw-blackstone-analysis/cache/")]
+    cache_path = "C:/Users/flawrence/Documents/Projects/FCL/Research Area/ds-caselaw-blackstone-analysis/cache/"
+    csv_folder = [Path(cache_path)]
     files_for_parsing = xf.get_filenames(csv_folder, "csv")
 
     for path, file in files_for_parsing:
@@ -168,13 +209,23 @@ if __name__ == '__main__':
             if not(type_error_values.empty):
                 print("Warning!: Unexpected type in values " + str(type_error_values))
 
-            print(df['filename'].unique()[0])
-            leg_comparison = compare_values(leg_values.groupby('position', as_index=False).agg(set).sort_index(), folders=folders)
-            if not(leg_comparison.empty):
-                print(leg_comparison)
+            filename = df['filename'].unique()[0]
+            print(filename)
+
+            if not(leg_values.empty):
+                grouped_leg_values = leg_values.groupby(['position', 'eID'], as_index=False).agg(set)
+                grouped_leg_values.to_csv(Path(cache_path, 'output', filename + '_leg_data.csv'), index=False, encoding='utf-8')
+
+                leg_comparison = compare_values(grouped_leg_values, folders=folders)
+                if not(leg_comparison.empty):
+                    leg_comparison.to_csv(Path(cache_path, 'output', filename + '_leg_comparison.csv', index=False, encoding='utf-8'))
 
 
-            case_comparison = compare_values(case_values.groupby('position', as_index=False).agg(set).sort_index(), folders=folders, type="case")
-            if not(case_comparison.empty):
-                print(case_comparison)
+            if not(case_values.empty):
+                grouped_case_values = case_values.groupby(['position', 'eID'], as_index=False).agg(set)
+                grouped_case_values.to_csv(Path(cache_path, 'output', filename + '_case_data.csv', index=False, encoding='utf-8'))
+
+                case_comparison = compare_values(grouped_case_values, folders=folders, type="case")
+                if not(case_comparison.empty):
+                    case_comparison.to_csv(Path(cache_path, 'output', filename + '_case_comparison.csv', index=False, encoding='utf-8'))
             
