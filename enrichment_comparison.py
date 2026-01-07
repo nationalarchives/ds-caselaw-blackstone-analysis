@@ -211,21 +211,25 @@ if __name__ == '__main__':
 
             filename = df['filename'].unique()[0]
             print(filename)
-
+                
             if not(leg_values.empty):
                 grouped_leg_values = leg_values.groupby(['position', 'eID'], as_index=False).agg(set)
+                #print(grouped_leg_values)
                 grouped_leg_values.to_csv(Path(cache_path, 'output', filename + '_leg_data.csv'), index=False, encoding='utf-8')
 
+                '''
                 leg_comparison = compare_values(grouped_leg_values, folders=folders)
                 if not(leg_comparison.empty):
                     leg_comparison.to_csv(Path(cache_path, 'output', filename + '_leg_comparison.csv', index=False, encoding='utf-8'))
-
+                '''
 
             if not(case_values.empty):
                 grouped_case_values = case_values.groupby(['position', 'eID'], as_index=False).agg(set)
-                grouped_case_values.to_csv(Path(cache_path, 'output', filename + '_case_data.csv', index=False, encoding='utf-8'))
+                #print(grouped_case_values)
+                grouped_case_values.to_csv(Path(cache_path, 'output', filename + '_case_data.csv'), index=False, encoding='utf-8')
 
+                '''
                 case_comparison = compare_values(grouped_case_values, folders=folders, type="case")
                 if not(case_comparison.empty):
                     case_comparison.to_csv(Path(cache_path, 'output', filename + '_case_comparison.csv', index=False, encoding='utf-8'))
-            
+                '''
