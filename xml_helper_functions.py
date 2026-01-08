@@ -1,7 +1,8 @@
-from lxml import etree as etree
+#from lxml import etree as etree
 from pathlib import Path
 import shutil, csv, io, os
 import pandas as pd
+from saxonche import PySaxonProcessor, PySaxonApiError
 
 
 def get_filenames(data_paths, suffix="xml"):
@@ -31,10 +32,10 @@ def get_filenames(data_paths, suffix="xml"):
     
     return filenames
 
-
+'''
 def parse_file(folder, filename, transformation_filename):
-    ''' Function reads the specified XML file and runs the transformations on it to extract the requested values. Returns the values.
-    '''
+    '' Function reads the specified XML file and runs the transformations on it to extract the requested values. Returns the values.
+    ''
     
     transform_file = Path("data", "xslt", transformation_filename)
     
@@ -58,7 +59,34 @@ def parse_file(folder, filename, transformation_filename):
     extracted_values = transform(tree)
     
     return(extracted_values)
+'''
 
+def saxon_parse_file(folder, filename, transformation_filename):
+    ''' Function reads the specified XML file and runs the transformations on it to extract the requested values. Returns the values.
+    '''
+    with PySaxonProcessor(license=False) as proc:
+        xsltproc = proc.new_xslt30_processor()
+
+        transform_file = Path("data", "xslt", transformation_filename)       
+        xml_file = Path(folder, filename) 
+
+        try:
+            tree = proc.parse_xml(xml_file_name=xml_file)       
+        except PySaxonApiError as e:
+            with open("data/errors-ParsingError.txt", "a", encoding="utf-8") as myfile:
+                myfile.write("Parser error in " + filename + ": " + str(e) + "\n")
+            
+            shutil.move(Path(folder, filename), Path(folder, "ParsingError", filename))     
+        
+        try: 
+            xsltproc.set_source(xdm_node=tree)
+            transform = xsltproc.compile_stylesheet(stylesheet_file=transform_file)
+        except PySaxonApiError as e:
+            print(e)
+               
+        extracted_values = transform.transform_to_string(xdm_node=tree, encoding='utf-8')
+        
+        return(extracted_values)
 
 def get_data_from_transform(xml_folder, transformation_file, filter=[]):
     ''' Function runs the specified XSLT transformation on all the XML files in the specified folder.
@@ -81,7 +109,7 @@ def get_data_from_transform(xml_folder, transformation_file, filter=[]):
 
     for path, xml_file in files_for_parsing:
 
-        values = parse_file(Path(path), xml_file, transformation_file)
+        values = saxon_parse_file(Path(path), xml_file, transformation_file)
 
         #print(values)
 

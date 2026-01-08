@@ -2,7 +2,8 @@ import xml_helper_functions as xf
 import pandas as pd
 from pathlib import Path
 import requests
-from lxml import etree as etree
+#from lxml import etree as etree
+from saxonche import PySaxonProcessor, PySaxonApiError
 
 # Read in CSVs of extraction from specified models
 # Compare the extracted values with the default extractions
@@ -103,22 +104,33 @@ def check_url(uri, type="leg"):
 
     if response.ok:
         try: 
-            tree = etree.ElementTree(etree.fromstring(response.content))
-            root = tree.getroot()
+            #tree = etree.ElementTree(etree.fromstring(response.content))            
+            #root = tree.getroot()
+            with PySaxonProcessor(license=False) as proc:
+                xml_builder = proc.new_document_builder()
+                xml_tree = xml_builder.parse_xml(xml_text=response.content)
+                xpath_processor = proc.new_xpath_processor()
+                xpath_processor.set_context(xdm_item=xml_tree)
+                
+
             if type == "leg":
-                title = root.find(".//dc:title", namespaces={"dc": "http://purl.org/dc/elements/1.1/"})
-                return(title.text)
+                xpath_processor.declare_namespace('dc', 'http://purl.org/dc/elements/1.1/')
+                #title = root.find(".//dc:title", namespaces={"dc": "http://purl.org/dc/elements/1.1/"})
+                title = xpath_processor.evaluate_single('.//dc:title')
+                return(title.get_string_value())
             else:
                 #print("Root: " + str(root) + " in " + url)
-                citation = root.find(".//uk:cite", namespaces={"uk": "https://caselaw.nationalarchives.gov.uk/akn"})
+                xpath_processor.declare_namespace('uk', 'https://caselaw.nationalarchives.gov.uk/akn')
+                #citation = root.find(".//uk:cite", namespaces={"uk": "https://caselaw.nationalarchives.gov.uk/akn"})
+                citation = xpath_processor.evaluate_single('.//uk:cite')
                 if citation is not None:
                     #print("Citation found in " + url)
-                    return(citation.text)
+                    return(citation.get_string_value())
                 else:
                     print("Could not find citation element in " + url)
                     return(None)
 
-        except etree.ParseError as pe:
+        except PySaxonApiError as pe:
             print("Could not parse " + url + ": " + str(pe))
             return(None)
         except AttributeError as ae:
@@ -217,19 +229,19 @@ if __name__ == '__main__':
                 #print(grouped_leg_values)
                 grouped_leg_values.to_csv(Path(cache_path, 'output', filename + '_leg_data.csv'), index=False, encoding='utf-8')
 
-                '''
+                ''''''
                 leg_comparison = compare_values(grouped_leg_values, folders=folders)
                 if not(leg_comparison.empty):
                     leg_comparison.to_csv(Path(cache_path, 'output', filename + '_leg_comparison.csv', index=False, encoding='utf-8'))
-                '''
+                
 
             if not(case_values.empty):
                 grouped_case_values = case_values.groupby(['position', 'eID'], as_index=False).agg(set)
                 #print(grouped_case_values)
                 grouped_case_values.to_csv(Path(cache_path, 'output', filename + '_case_data.csv'), index=False, encoding='utf-8')
 
-                '''
+                ''''''
                 case_comparison = compare_values(grouped_case_values, folders=folders, type="case")
                 if not(case_comparison.empty):
                     case_comparison.to_csv(Path(cache_path, 'output', filename + '_case_comparison.csv', index=False, encoding='utf-8'))
-                '''
+                
