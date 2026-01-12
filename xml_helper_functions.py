@@ -67,11 +67,11 @@ def saxon_parse_file(folder, filename, transformation_filename):
     with PySaxonProcessor(license=False) as proc:
         xsltproc = proc.new_xslt30_processor()
 
-        transform_file = Path("data", "xslt", transformation_filename)       
+        transform_file = Path("data", "xslt", transformation_filename)    
         xml_file = Path(folder, filename) 
 
         try:
-            tree = proc.parse_xml(xml_file_name=xml_file)       
+            tree = proc.parse_xml(xml_file_name=str(xml_file))       
         except PySaxonApiError as e:
             with open("data/errors-ParsingError.txt", "a", encoding="utf-8") as myfile:
                 myfile.write("Parser error in " + filename + ": " + str(e) + "\n")
@@ -79,12 +79,12 @@ def saxon_parse_file(folder, filename, transformation_filename):
             shutil.move(Path(folder, filename), Path(folder, "ParsingError", filename))     
         
         try: 
-            xsltproc.set_source(xdm_node=tree)
-            transform = xsltproc.compile_stylesheet(stylesheet_file=transform_file)
+            #xsltproc.set_source(xdm_node=tree)
+            transform = xsltproc.compile_stylesheet(stylesheet_file=str(transform_file))
         except PySaxonApiError as e:
             print(e)
                
-        extracted_values = transform.transform_to_string(xdm_node=tree, encoding='utf-8')
+        extracted_values = transform.transform_to_string(xdm_node=tree)
         
         return(extracted_values)
 

@@ -16,12 +16,14 @@ cache_folder = Path(base_folder,"cache")
 
 #judgment_data = xf.get_data_from_transform(xml_folder, transformation_file, filter=["eat-2022-1.xml", "eat-2022-3.xml"])
 judgment_data = xf.get_data_from_transform(xml_folder, transformation_file)
-#print(judgment_data)
+print(judgment_data)
 
 #print(judgment_data['filename'].nunique())
 
 if not(judgment_data.empty):
-    for id, group in judgment_data.groupby(['filename']):
+
+    for id, group in judgment_data.groupby('filename'):
         #print(id)
+        #print(group)
         group.to_csv(Path(cache_folder, id + "_enrichmented_refs.csv"), index=False)
         print("Saving csv to " + str(Path(cache_folder, id + "_enrichmented_refs.csv")))

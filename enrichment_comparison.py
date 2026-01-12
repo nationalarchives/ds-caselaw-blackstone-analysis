@@ -106,9 +106,10 @@ def check_url(uri, type="leg"):
         try: 
             #tree = etree.ElementTree(etree.fromstring(response.content))            
             #root = tree.getroot()
+            xml_string = response.content.decode('utf-8')
             with PySaxonProcessor(license=False) as proc:
                 xml_builder = proc.new_document_builder()
-                xml_tree = xml_builder.parse_xml(xml_text=response.content)
+                xml_tree = xml_builder.parse_xml(xml_text=xml_string)
                 xpath_processor = proc.new_xpath_processor()
                 xpath_processor.set_context(xdm_item=xml_tree)
                 
@@ -232,7 +233,7 @@ if __name__ == '__main__':
                 ''''''
                 leg_comparison = compare_values(grouped_leg_values, folders=folders)
                 if not(leg_comparison.empty):
-                    leg_comparison.to_csv(Path(cache_path, 'output', filename + '_leg_comparison.csv', index=False, encoding='utf-8'))
+                    leg_comparison.to_csv(Path(cache_path, 'output', filename + '_leg_comparison.csv'), index=False, encoding='utf-8')
                 
 
             if not(case_values.empty):
@@ -243,5 +244,5 @@ if __name__ == '__main__':
                 ''''''
                 case_comparison = compare_values(grouped_case_values, folders=folders, type="case")
                 if not(case_comparison.empty):
-                    case_comparison.to_csv(Path(cache_path, 'output', filename + '_case_comparison.csv', index=False, encoding='utf-8'))
+                    case_comparison.to_csv(Path(cache_path, 'output', filename + '_case_comparison.csv'), index=False, encoding='utf-8')
                 
