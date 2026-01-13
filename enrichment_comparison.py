@@ -10,7 +10,7 @@ from saxonche import PySaxonProcessor, PySaxonApiError
 
 # Verify if the extracted links are valid links
 
-def compare_values(values, folders, type="leg"):
+def compare_values_map(values, folders):
     #print("Legislation Comparison:")
     #leg_values = leg_values.dropna(how='all', axis=1)
     #print(leg_values.info())
@@ -26,6 +26,7 @@ def compare_values(values, folders, type="leg"):
 
     link_results = []
     enrichment_source = []
+    checked = {}
 
     for i, row in values.iterrows():
 
@@ -40,36 +41,8 @@ def compare_values(values, folders, type="leg"):
                 comparision_dict[column + "_comparison"].append(match_check(row, column))
                 #print(column + "_comparison: " + str(len(comparision_dict[column + "_comparison"])))
 
-        #link check
-        if len(row['href']) == 1:
-            link = list(row['href'])[0]
-            #print("href: " + link)
-            if check_link_url(link):
-                link_doc = check_url(link, type=type)
-                if link_doc:
-                    #print(link_doc)
-                    link_results.append({link_doc})
-                else:
-                    link_results.append({"Error: " + link})
-            else:
-                link_results.append({"Not checked: " + link})
-                #print("Warning!: href is '" + link + "'")
-        else:
-            print("Warning!: Link difference")
-            link_set = ()
-            for link in row['href']:
-                #print("href: " + link)
-                if check_link_url(link):
-                    link_doc = check_url(link, type=type)
-                    if link_doc:
-                        link_set.add(link_doc)
-                    else:
-                        link_set.add("Bad URI: " + link)
-                else:
-                    link_set.add("Not checked: " + link)
-
-            link_results.append(link_set)
-
+        link_results, checked = reference_validation(row, checked)                          
+            
     #print(comparision_dict)
     
     leg_enrichment_comparison = df.from_dict(comparision_dict)
@@ -82,6 +55,50 @@ def compare_values(values, folders, type="leg"):
     #print(values)
     return leg_enrichment_comparison
 
+
+def compare_values(values, folders):
+
+    columns = values.columns.values.tolist()
+    comparision_dict = {}
+    no_compare = ['type', 'file', 'filename', 'parent_folder', 'folder', 'position', 'eID']
+    for column in columns:
+        if column not in no_compare:
+            comparision_dict[column + "_comparison"] = []
+
+    link_results = []
+    enrichment_source = []
+    checked = {}
+
+    for i, row in values.iterrows():
+
+        #value comparison
+        if len(folders) == len(row['parent_folder']):
+            enrichment_source.append(["All"])
+        else:
+            enrichment_source.append(list(row['parent_folder']))
+
+     
+        for column in columns:
+            if column not in no_compare:
+                comparision_dict[column + "_comparison"].append(list(row[column]))
+                #print(column + "_comparison: " + str(len(comparision_dict[column + "_comparison"])))
+
+        link_result, checked = reference_validation(row, checked)      
+        link_results.append(list(link_result))                    
+           
+    #print(comparision_dict)
+    
+    enrichment_comparison = df.from_dict(comparision_dict)
+    enrichment_comparison['link check'] = link_results    
+    enrichment_comparison['source'] = enrichment_source 
+    enrichment_comparison['position'] = values['position']
+    enrichment_comparison['eID'] = values['eID']
+    
+
+    #print(values)
+    return enrichment_comparison
+
+
 def match_check(row, colname):
 
     if colname == 'parent_folder':
@@ -91,14 +108,103 @@ def match_check(row, colname):
     else:
         return True
 
-def check_link_url(link):
+
+def reference_validation(row, checked):
+    if len(row['href']) == 1:
+        link = list(row['href'])[0]
+        if link in checked.keys():
+            #link_results.append(checked[link])
+            result = checked[link]
+        else:
+            result = check_ref_link(link)
+            checked[link] = result
+            #link_results.append(result)            
+        return(result, checked) 
+    else:
+        print("Warning!: Href differences")
+        link_set = ()
+        for link in row['href']:   
+            if link in checked.keys():
+                link_set.add(checked[link])
+            else:
+                result = check_ref_link(link)
+                checked[link] = result 
+                link_set.add(result)               
+        #link_results = link_set  
+        return(link_set, checked) 
+
+def check_ref_link(link):
+    #TO DO: combine function with get_xml_file_value
+
+    link_results = ""
+    #link check
+
+    print("href: " + link)
+    type = check_link_url(link)
+    if type != None:
+        link_doc = get_xml_file_value(link, type=type)
+        if link_doc:
+            #print(link_doc)
+            link_results = {link_doc}
+        else:
+            link_results = {"Bad URI: " + link}
+    else:
+        link_results = {"Not checked: " + link}
+        #print("Warning!: href is '" + link + "'")
+    return link_results
+
+def check_ref_link_old(row, type):
+
+    link_results = ""
+    #link check
+    if len(row['href']) == 1:
+        link = list(row['href'])[0]
+        #print("href: " + link)
+        if check_link_url(link):
+            link_doc = get_xml_file_value(link, type=type)
+            if link_doc:
+                #print(link_doc)
+                link_results = {link_doc}
+            else:
+                link_results = {"Error: " + link}
+        else:
+            link_results = {"Not checked: " + link}
+            #print("Warning!: href is '" + link + "'")
+    else:
+        print("Warning!: Link difference")
+        link_set = ()
+        for link in row['href']:
+            #print("href: " + link)
+            if check_link_url(link):
+                link_doc = get_xml_file_value(link, type=type)
+                if link_doc:
+                    link_set.add(link_doc)
+                else:
+                    link_set.add("Bad URI: " + link)
+            else:
+                link_set.add("Not checked: " + link)
+
+        link_results = link_set
+
+    return link_results
+
+
+def check_link_url_old(link):
     if link and ("www.legislation.gov.uk" in link or "caselaw.nationalarchives.gov.uk" in link) :
         return True
     else:
         return False
 
+def check_link_url(link):
+    if link and "www.legislation.gov.uk" in link:
+        return 'leg'
+    elif link and "caselaw.nationalarchives.gov.uk" in link :
+        return 'case'
+    else:
+        return None
 
-def check_url(uri, type="leg"):
+
+def get_xml_file_value(uri, type="leg"):
     url = uri + '/data.xml'
     response = requests.get(url)
 
@@ -198,12 +304,13 @@ if __name__ == '__main__':
     csv_folder = [Path(cache_path)]
     files_for_parsing = xf.get_filenames(csv_folder, "csv")
 
-    for path, file in files_for_parsing:
+    #print(files_for_parsing)
 
-        #print(file)
+    for path, file in files_for_parsing:
 
         if "_enrichmented_refs.csv" in file:
             df = pd.read_csv(Path(path, file), encoding='UTF-8')
+            df.fillna('', inplace=True)
             df['parent_folder'] = df.apply(get_parent_folder, axis=1)
             df['position'] = df.apply(get_position, axis=1)
 
@@ -242,7 +349,7 @@ if __name__ == '__main__':
                 grouped_case_values.to_csv(Path(cache_path, 'output', filename + '_case_data.csv'), index=False, encoding='utf-8')
 
                 ''''''
-                case_comparison = compare_values(grouped_case_values, folders=folders, type="case")
+                case_comparison = compare_values(grouped_case_values, folders=folders)
                 if not(case_comparison.empty):
                     case_comparison.to_csv(Path(cache_path, 'output', filename + '_case_comparison.csv'), index=False, encoding='utf-8')
                 
