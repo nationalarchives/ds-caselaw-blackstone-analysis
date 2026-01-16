@@ -10,6 +10,57 @@ from saxonche import PySaxonProcessor, PySaxonApiError
 
 # Verify if the extracted links are valid links
 
+def compare_references(files_for_parsing):
+
+    for path, file in files_for_parsing:
+        if "_enrichmented_refs.csv" in file:
+            df = pd.read_csv(Path(path, file), encoding='UTF-8', dtype=str)
+            df.fillna('', inplace=True)
+            df['parent_folder'] = df.apply(get_parent_folder, axis=1)
+            df['position'] = df.apply(get_position, axis=1)
+
+            folders = set(df['parent_folder'].unique())
+
+            df['year'] = df['year'].apply(remove_trailing_decimals)
+            df['num'] = df['num'].apply(remove_trailing_decimals)
+            #print(df.dtypes)
+
+            #print(df[['year', 'num']])
+            #print(df[['position', 'text before', 'text after']])
+
+            values = df.groupby(['parent_folder', 'filename', 'type']).size().reset_index(name='counts').sort_values(['type'])
+            print(values[['parent_folder', 'filename', 'type', 'counts']])
+            
+            case_values = df[df['type'] == 'case']
+            leg_values = df[df['type'] == 'legislation']
+        
+            type_error_values = df[~df['type'].isin(['legislation', 'case'])]
+            if not(type_error_values.empty):
+                print("Warning!: Unexpected type in values " + str(type_error_values))
+
+            filename = df['filename'].unique()[0]
+            print(filename)
+                
+            if not(leg_values.empty):
+                grouped_leg_values = leg_values.groupby(['position', 'eID'], as_index=False).agg(set)
+                #print(grouped_leg_values)
+                #grouped_leg_values.to_csv(Path(cache_path, 'output', filename + '_leg_data.csv'), index=False, encoding='utf-8')
+                
+                leg_comparison = compare_values(grouped_leg_values, folders=folders)
+                if not(leg_comparison.empty):
+                    leg_comparison.to_csv(Path(cache_path, 'output', filename + '_leg_comparison.csv'), index=False, encoding='utf-8')
+                
+
+            if not(case_values.empty):
+                
+                grouped_case_values = case_values.groupby(['position', 'eID'], as_index=False).agg(set)
+                #print(grouped_case_values)
+                #grouped_case_values.to_csv(Path(cache_path, 'output', filename + '_case_data.csv'), index=False, encoding='utf-8')
+
+                case_comparison = compare_values(grouped_case_values, folders=folders)
+                if not(case_comparison.empty):
+                    case_comparison.to_csv(Path(cache_path, 'output', filename + '_case_comparison.csv'), index=False, encoding='utf-8')
+
 def compare_values_map(values, folders):
     #print("Legislation Comparison:")
     #leg_values = leg_values.dropna(how='all', axis=1)
@@ -45,7 +96,7 @@ def compare_values_map(values, folders):
             
     #print(comparision_dict)
     
-    leg_enrichment_comparison = df.from_dict(comparision_dict)
+    leg_enrichment_comparison = pd.DataFrame.from_dict(comparision_dict)
     leg_enrichment_comparison['link check'] = link_results  
     leg_enrichment_comparison['source'] = enrichment_source 
     leg_enrichment_comparison['position'] = values['position']
@@ -88,7 +139,7 @@ def compare_values(values, folders):
            
     #print(comparision_dict)
     
-    enrichment_comparison = df.from_dict(comparision_dict)
+    enrichment_comparison = pd.DataFrame.from_dict(comparision_dict)
     enrichment_comparison['link check'] = link_results    
     enrichment_comparison['source'] = enrichment_source 
     enrichment_comparison['position'] = values['position']
@@ -286,7 +337,7 @@ def remove_trailing_decimals(string_with_possible_decimals):
 
 
 def output_report(output_path):
-
+    #TO DO
     report_text = []
 
     #number of unique files
@@ -314,10 +365,7 @@ def output_report(output_path):
 
     # Position
     #   Table with column for Source , columns for values...
-
-
-
-    
+ 
 
     with open("demofile.txt", "w") as report:
         report.writelines(report_text)
@@ -332,54 +380,5 @@ if __name__ == '__main__':
 
     #print(files_for_parsing)
 
-    for path, file in files_for_parsing:
-
-        if "_enrichmented_refs.csv" in file:
-            df = pd.read_csv(Path(path, file), encoding='UTF-8', dtype=str)
-            df.fillna('', inplace=True)
-            df['parent_folder'] = df.apply(get_parent_folder, axis=1)
-            df['position'] = df.apply(get_position, axis=1)
-
-            folders = set(df['parent_folder'].unique())
-
-            df['year'] = df['year'].apply(remove_trailing_decimals)
-            df['num'] = df['num'].apply(remove_trailing_decimals)
-            #print(df.dtypes)
-
-            #print(df[['year', 'num']])
-            #print(df[['position', 'text before', 'text after']])
-
-            values = df.groupby(['parent_folder', 'filename', 'type']).size().reset_index(name='counts').sort_values(['type'])
-
-            #print(values[['parent_folder', 'filename', 'type', 'counts']])
-            
-            case_values = df[df['type'] == 'case']
-            leg_values = df[df['type'] == 'legislation']
-        
-            type_error_values = df[~df['type'].isin(['legislation', 'case'])]
-            if not(type_error_values.empty):
-                print("Warning!: Unexpected type in values " + str(type_error_values))
-
-            filename = df['filename'].unique()[0]
-            print(filename)
-                
-            if not(leg_values.empty):
-                grouped_leg_values = leg_values.groupby(['position', 'eID'], as_index=False).agg(set)
-                #print(grouped_leg_values)
-                #grouped_leg_values.to_csv(Path(cache_path, 'output', filename + '_leg_data.csv'), index=False, encoding='utf-8')
-                
-                leg_comparison = compare_values(grouped_leg_values, folders=folders)
-                if not(leg_comparison.empty):
-                    leg_comparison.to_csv(Path(cache_path, 'output', filename + '_leg_comparison.csv'), index=False, encoding='utf-8')
-                
-
-            if not(case_values.empty):
-                
-                grouped_case_values = case_values.groupby(['position', 'eID'], as_index=False).agg(set)
-                #print(grouped_case_values)
-                #grouped_case_values.to_csv(Path(cache_path, 'output', filename + '_case_data.csv'), index=False, encoding='utf-8')
-
-                case_comparison = compare_values(grouped_case_values, folders=folders)
-                if not(case_comparison.empty):
-                    case_comparison.to_csv(Path(cache_path, 'output', filename + '_case_comparison.csv'), index=False, encoding='utf-8')
+    compare_references(files_for_parsing)
                 
