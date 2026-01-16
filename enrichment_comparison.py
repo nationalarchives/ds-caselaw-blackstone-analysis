@@ -63,7 +63,7 @@ def compare_values(values, folders):
     no_compare = ['type', 'file', 'filename', 'parent_folder', 'folder', 'position', 'eID']
     for column in columns:
         if column not in no_compare:
-            comparision_dict[column + "_comparison"] = []
+            comparision_dict[column] = []
 
     link_results = []
     enrichment_source = []
@@ -80,7 +80,7 @@ def compare_values(values, folders):
      
         for column in columns:
             if column not in no_compare:
-                comparision_dict[column + "_comparison"].append(list(row[column]))
+                comparision_dict[column].append(list(row[column]))
                 #print(column + "_comparison: " + str(len(comparision_dict[column + "_comparison"])))
 
         link_result, checked = reference_validation(row, checked)      
@@ -116,7 +116,7 @@ def reference_validation(row, checked):
             #link_results.append(checked[link])
             result = checked[link]
         else:
-            result = check_ref_link(link)
+            result = get_xml_file_value(link)
             checked[link] = result
             #link_results.append(result)            
         return(result, checked) 
@@ -127,19 +127,18 @@ def reference_validation(row, checked):
             if link in checked.keys():
                 link_set.add(checked[link])
             else:
-                result = check_ref_link(link)
+                result = get_xml_file_value(link)
                 checked[link] = result 
                 link_set.add(result)               
         #link_results = link_set  
         return(link_set, checked) 
 
-def check_ref_link(link):
-    #TO DO: combine function with get_xml_file_value
+def check_ref_link_old2(link):
 
     link_results = ""
     #link check
 
-    print("href: " + link)
+    #print("href: " + link)
     type = check_link_url(link)
     if type != None:
         link_doc = get_xml_file_value(link, type=type)
@@ -204,53 +203,69 @@ def check_link_url(link):
         return None
 
 
-def get_xml_file_value(uri, type="leg"):
-    url = uri + '/data.xml'
-    response = requests.get(url)
+def get_xml_file_value(uri):
 
-    if response.ok:
-        try: 
-            #tree = etree.ElementTree(etree.fromstring(response.content))            
-            #root = tree.getroot()
-            xml_string = response.content.decode('utf-8')
-            with PySaxonProcessor(license=False) as proc:
-                xml_builder = proc.new_document_builder()
-                xml_tree = xml_builder.parse_xml(xml_text=xml_string)
-                xpath_processor = proc.new_xpath_processor()
-                xpath_processor.set_context(xdm_item=xml_tree)
-                
+    link_results = ""
 
-            if type == "leg":
-                xpath_processor.declare_namespace('dc', 'http://purl.org/dc/elements/1.1/')
-                #title = root.find(".//dc:title", namespaces={"dc": "http://purl.org/dc/elements/1.1/"})
-                title = xpath_processor.evaluate_single('.//dc:title')
-                return(title.get_string_value())
-            else:
-                #print("Root: " + str(root) + " in " + url)
-                xpath_processor.declare_namespace('uk', 'https://caselaw.nationalarchives.gov.uk/akn')
-                #citation = root.find(".//uk:cite", namespaces={"uk": "https://caselaw.nationalarchives.gov.uk/akn"})
-                citation = xpath_processor.evaluate_single('.//uk:cite')
-                if citation is not None:
+    type = check_link_url(uri)
+    if type != None:
+        url = uri + '/data.xml'
+        response = requests.get(url)
+
+        if response.ok:
+            try: 
+                #tree = etree.ElementTree(etree.fromstring(response.content))            
+                #root = tree.getroot()
+                xml_string = response.content.decode('utf-8')
+                with PySaxonProcessor(license=False) as proc:
+                    xml_builder = proc.new_document_builder()
+                    xml_tree = xml_builder.parse_xml(xml_text=xml_string)
+                    xpath_processor = proc.new_xpath_processor()
+                    xpath_processor.set_context(xdm_item=xml_tree)
+                    
+
+                if type == "leg":
+                    xpath_processor.declare_namespace('dc', 'http://purl.org/dc/elements/1.1/')
+                    #title = root.find(".//dc:title", namespaces={"dc": "http://purl.org/dc/elements/1.1/"})
+                    found_value = xpath_processor.evaluate_single('.//dc:title')
+                else:
+                    #print("Root: " + str(root) + " in " + url)
+                    xpath_processor.declare_namespace('uk', 'https://caselaw.nationalarchives.gov.uk/akn')
+                    #citation = root.find(".//uk:cite", namespaces={"uk": "https://caselaw.nationalarchives.gov.uk/akn"})
+                    found_value = xpath_processor.evaluate_single('.//uk:cite')
+
+                if found_value is not None:
                     #print("Citation found in " + url)
-                    return(citation.get_string_value())
+                    link_doc = found_value.get_string_value()
                 else:
                     print("Could not find citation element in " + url)
-                    return(None)
+                    link_doc = "Could not find citation element in " + url
 
-        except PySaxonApiError as pe:
-            print("Could not parse " + url + ": " + str(pe))
-            return(None)
-        except AttributeError as ae:
-            print("No value found at " + url + ": " + str(ae))
-            return(None)
+            except PySaxonApiError as pe:
+                print("Could not parse " + url + ": " + str(pe))
+                link_doc = 'Could not parse: ' + url
+            except AttributeError as ae:
+                print("No value found at " + url + ": " + str(ae))
+                link_doc = 'No value found at: ' + url
 
-    else:
-        if type == "leg":
-            print("Warning!: Bad URI: " + uri)
         else:
-            print("Warning!: No XML file: " + uri)
-        
-        return("Bad URI: " + uri)
+            if type == "leg":
+                print("Warning!: Bad URI: " + uri)
+            else:
+                print("Warning!: No XML file: " + uri)
+            
+            link_doc = "Bad URI: " + uri
+
+
+        if link_doc != '':
+            #print(link_doc)
+            link_results = {link_doc}
+        else:
+            link_results = {"Bad URI: " + uri}
+    else:
+        link_results = {"Not checked: " + uri}
+        #print("Warning!: href is '" + link + "'")
+    return link_results
 
 
 def get_parent_folder(row):
@@ -258,6 +273,17 @@ def get_parent_folder(row):
 
 def get_position(row):
     return len(row['text before'])
+
+def remove_trailing_decimals(string_with_possible_decimals):
+    #2026-1-14 pandas seems to be converting the numbers to floats even when I tell it to treat everything as strings (https://github.com/pandas-dev/pandas/issues/31821 ?). This gets rid of any trailing '.0'
+
+    if len(string_with_possible_decimals) > 1 and ".0" == string_with_possible_decimals[-2:]:
+        #print("New value is: " + string_with_possible_decimals[:-2])
+        return string_with_possible_decimals[:-2]
+    else:
+        return string_with_possible_decimals
+
+
 
 def output_report(output_path):
 
@@ -309,13 +335,18 @@ if __name__ == '__main__':
     for path, file in files_for_parsing:
 
         if "_enrichmented_refs.csv" in file:
-            df = pd.read_csv(Path(path, file), encoding='UTF-8')
+            df = pd.read_csv(Path(path, file), encoding='UTF-8', dtype=str)
             df.fillna('', inplace=True)
             df['parent_folder'] = df.apply(get_parent_folder, axis=1)
             df['position'] = df.apply(get_position, axis=1)
 
             folders = set(df['parent_folder'].unique())
 
+            df['year'] = df['year'].apply(remove_trailing_decimals)
+            df['num'] = df['num'].apply(remove_trailing_decimals)
+            #print(df.dtypes)
+
+            #print(df[['year', 'num']])
             #print(df[['position', 'text before', 'text after']])
 
             values = df.groupby(['parent_folder', 'filename', 'type']).size().reset_index(name='counts').sort_values(['type'])
